@@ -1,13 +1,624 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Constructor de Marquillas Individuales</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Se actualiza la librería a xlsx-js-style para soportar estilos como "Ajustar Texto" nativamente -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .dropzone.dragover { border-color: #2563eb; background-color: #eff6ff; }
+        .preview-cell { white-space: pre-wrap; word-wrap: break-word; line-height: 1.4; }
+        
+        /* Estilos Drag & Drop Personalizado */
+        .sortable-block { transition: transform 0.2s, box-shadow 0.2s; }
+        .sortable-block.dragging { opacity: 0.4; transform: scale(0.98); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .sortable-block.drag-over { border-top: 2px solid #3b82f6; padding-top: 14px; }
+        .drag-handle { cursor: grab; }
+        .drag-handle:active { cursor: grabbing; }
+        
+        /* Ocultar elementos (Se añade !important para evitar conflictos con la clase .grid de Tailwind) */
+        .hidden-tab { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col text-gray-800">
 
+    <!-- Header -->
+    <header class="bg-blue-800 text-white py-6 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h1 class="text-2xl font-bold">Procesador de Marquillas (Modo Columnas)</h1>
+            </div>
+            <div class="text-sm bg-blue-900 px-3 py-1 rounded-full text-blue-100 font-medium border border-blue-700">
+                Lógica Automática + Bloques
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 py-8 w-full">
+        
+        <!-- Explicación de Estructuras -->
+        <div class="bg-indigo-50 border border-indigo-100 p-5 rounded-xl mb-6 shadow-sm">
+            <h3 class="font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+                Explicación de las Estructuras (Modo Automático)
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-indigo-800">
+                <div class="bg-white p-3 rounded border border-indigo-100">
+                    <strong class="text-indigo-900 block border-b border-indigo-50 pb-1 mb-2">MARQUILLA 1 (Lado Origen)</strong>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li><strong>Línea 1:</strong> TAG CABLE SWC</li>
+                        <li><strong>Línea 2:</strong> TAGNAME <span class="text-gray-400">:</span> DESDE <span class="text-gray-400">:</span> BORNERA 1 <span class="text-gray-400">:</span> BORNE 1</li>
+                        <li><strong>Línea 3:</strong> HACIA <span class="text-gray-400">:</span> BORNERA 2 <span class="text-gray-400">:</span> BORNE 2</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-3 rounded border border-indigo-100">
+                    <strong class="text-indigo-900 block border-b border-indigo-50 pb-1 mb-2">MARQUILLA 2 (Lado Destino)</strong>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li><strong>Línea 1:</strong> TAG CABLE SWC</li>
+                        <li><strong>Línea 2:</strong> HACIA <span class="text-gray-400">:</span> BORNERA 2 <span class="text-gray-400">:</span> BORNE 2</li>
+                        <li><strong>Línea 3:</strong> TAGNAME <span class="text-gray-400">:</span> DESDE <span class="text-gray-400">:</span> BORNERA 1 <span class="text-gray-400">:</span> BORNE 1</li>
+                    </ul>
+                </div>
+            </div>
+            <p class="text-xs text-indigo-600 mt-3">* Los valores vacíos se omiten automáticamente para no dejar dos puntos (:) huérfanos. <strong>Nota:</strong> Al cargar, el programa descombina el Excel y rellena los vacíos con el valor anterior.</p>
+        </div>
+
+        <!-- Zona de Carga -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-col md:flex-row gap-8 items-center">
+            <div class="flex-1 w-full">
+                <div id="dropzone" class="dropzone border-2 border-dashed border-blue-300 rounded-xl p-6 text-center transition-all cursor-pointer hover:bg-blue-50 hover:border-blue-500 flex flex-col items-center">
+                    <input type="file" id="fileInput" class="hidden" accept=".xlsx, .xls, .csv">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <p class="text-sm font-semibold text-gray-700">Haz clic o arrastra tu Excel aquí</p>
+                </div>
+            </div>
+            <div id="fileInfo" class="flex-1 hidden">
+                <span class="inline-flex items-center gap-1 px-4 py-2 bg-green-100 text-green-800 text-sm font-bold rounded-lg border border-green-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                    <span id="rowCount"></span>
+                </span>
+                <p class="text-xs text-gray-500 mt-2">Archivo procesado. Selecciona un modo abajo para continuar.</p>
+            </div>
+        </div>
+
+        <div id="processingSection" class="hidden space-y-6">
+            
+            <!-- Selector de Modos -->
+            <div class="flex gap-2 p-1 bg-gray-200 rounded-lg w-fit mb-4">
+                <button id="btnModeAuto" onclick="switchMode('auto')" class="px-5 py-2 text-sm font-bold rounded-md bg-white shadow text-blue-700 transition-all">
+                    Modo Automático (Estructura Fija)
+                </button>
+                <button id="btnModeCustom" onclick="switchMode('custom')" class="px-5 py-2 text-sm font-bold rounded-md text-gray-600 hover:text-gray-800 transition-all">
+                    Modo Personalizado (Bloques)
+                </button>
+            </div>
+
+            <!-- CONTENIDO: MODO AUTOMÁTICO -->
+            <div id="tabAuto" class="bg-white p-6 rounded-xl shadow-sm border border-blue-200 space-y-4">
+                <h2 class="text-lg font-bold text-gray-800 mb-2">Asignación de Columnas Individuales</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    
+                    <!-- TAG -->
+                    <div class="bg-gray-50 p-4 rounded border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Columna TAG Principal</label>
+                        <select id="autoTag" class="w-full text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 trigger-update"></select>
+                    </div>
+
+                    <!-- ORIGEN (DESDE) -->
+                    <div class="bg-blue-50 p-4 rounded border border-blue-100 space-y-3">
+                        <h4 class="text-xs font-bold text-blue-800 border-b border-blue-200 pb-1">Datos ORIGEN</h4>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 mb-1">TAGNAME</label>
+                            <select id="autoTagName" class="w-full text-sm border-gray-300 rounded-md p-1.5 border trigger-update"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 mb-1">DESDE (Ej. Equipo)</label>
+                            <select id="autoDesde" class="w-full text-sm border-gray-300 rounded-md p-1.5 border trigger-update"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 mb-1">BORNERA 1</label>
+                            <select id="autoBorn1" class="w-full text-sm border-gray-300 rounded-md p-1.5 border trigger-update"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 mb-1">BORNE 1</label>
+                            <select id="autoBo1" class="w-full text-sm border-gray-300 rounded-md p-1.5 border trigger-update"></select>
+                        </div>
+                    </div>
+
+                    <!-- DESTINO (HACIA) -->
+                    <div class="bg-green-50 p-4 rounded border border-green-100 space-y-3">
+                        <h4 class="text-xs font-bold text-green-800 border-b border-green-200 pb-1">Datos DESTINO</h4>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 mb-1">HACIA (Ej. Equipo)</label>
+                            <select id="autoHacia" class="w-full text-sm border-gray-300 rounded-md p-1.5 border trigger-update"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 mb-1">BORNERA 2</label>
+                            <select id="autoBorn2" class="w-full text-sm border-gray-300 rounded-md p-1.5 border trigger-update"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 mb-1">BORNE 2</label>
+                            <select id="autoBo2" class="w-full text-sm border-gray-300 rounded-md p-1.5 border trigger-update"></select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTENIDO: MODO PERSONALIZADO -->
+            <div id="tabCustom" class="hidden-tab grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                
+                <!-- Constructor Marquilla 1 -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 relative overflow-hidden flex flex-col h-[550px]">
+                    <div class="p-4 pb-3 border-b border-gray-100 bg-white z-10">
+                        <h2 class="text-base font-bold text-gray-800">Estructura MARQUILLAS 1</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">Usa bloques para construir las líneas.</p>
+                    </div>
+                    <div id="builder-t1" class="p-4 flex-grow space-y-3 overflow-y-auto pb-24"></div>
+                    
+                    <!-- Botón flotante -->
+                    <button onclick="addBlock('t1')" class="absolute bottom-5 right-5 z-20 bg-blue-600 text-white px-4 py-3 rounded-full hover:bg-blue-700 font-bold flex items-center gap-2 shadow-[0_8px_16px_rgba(37,99,235,0.4)] transition-all hover:-translate-y-1 active:translate-y-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        Añadir Bloque
+                    </button>
+                </div>
+
+                <!-- Constructor Marquilla 2 -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 relative overflow-hidden flex flex-col h-[550px]">
+                    <div class="p-4 pb-3 border-b border-gray-100 bg-white z-10">
+                        <h2 class="text-base font-bold text-gray-800">Estructura MARQUILLAS 2</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">Usa bloques para construir las líneas.</p>
+                    </div>
+                    <div id="builder-t2" class="p-4 flex-grow space-y-3 overflow-y-auto pb-24"></div>
+                    
+                    <!-- Botón flotante -->
+                    <button onclick="addBlock('t2')" class="absolute bottom-5 right-5 z-20 bg-blue-600 text-white px-4 py-3 rounded-full hover:bg-blue-700 font-bold flex items-center gap-2 shadow-[0_8px_16px_rgba(37,99,235,0.4)] transition-all hover:-translate-y-1 active:translate-y-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        Añadir Bloque
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Vista Previa Exacta -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800">Vista Previa del Resultado</h2>
+                        <p class="text-sm text-gray-500">Mostrando datos calculados con el modo <span id="lblCurrentMode" class="font-bold text-blue-600">Automático</span>.</p>
+                    </div>
+                    <button id="btnDownload" class="px-6 py-2.5 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-md flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        Exportar Archivo Final
+                    </button>
+                </div>
+
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <table class="w-full text-left border-collapse bg-white">
+                        <thead>
+                            <tr class="bg-gray-100 border-b border-gray-300">
+                                <th class="p-3 text-xs font-bold text-gray-700 w-16 border-r border-gray-200 text-center">Fila</th>
+                                <th class="p-3 text-xs font-bold text-gray-700 w-1/2 border-r border-gray-200">MARQUILLAS 1 (Salida)</th>
+                                <th class="p-3 text-xs font-bold text-gray-700 w-1/2">MARQUILLAS 2 (Salida)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewTableBody" class="divide-y divide-gray-200">
+                            <!-- Datos Inyectados -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- ESTADO GLOBAL ---
+        let rawData = [];
+        let headers = [];
+        let processedData = [];
+        let fileName = "Marquillas_Procesadas.xlsx";
+        let currentMode = 'auto'; // 'auto' o 'custom'
+
+        // Plantillas iniciales para Modo Personalizado
+        let templates = {
+            t1: [{ id: Date.now()+1, column: "", inline: false }],
+            t2: [{ id: Date.now()+2, column: "", inline: false }]
+        };
+
+        // --- REFERENCIAS DOM ---
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const processingSection = document.getElementById('processingSection');
+        const previewTableBody = document.getElementById('previewTableBody');
+        const fileInfo = document.getElementById('fileInfo');
+        
+        // Selects Modo Auto
+        const sTag = document.getElementById('autoTag');
+        const sTagName = document.getElementById('autoTagName');
+        const sDesde = document.getElementById('autoDesde');
+        const sBorn1 = document.getElementById('autoBorn1');
+        const sBo1 = document.getElementById('autoBo1');
+        const sHacia = document.getElementById('autoHacia');
+        const sBorn2 = document.getElementById('autoBorn2');
+        const sBo2 = document.getElementById('autoBo2');
+        const autoSelects = [sTag, sTagName, sDesde, sBorn1, sBo1, sHacia, sBorn2, sBo2];
+
+        // --- EVENTOS BASE ---
+        dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        });
+
+        document.getElementById('btnDownload').addEventListener('click', downloadExcel);
+
+        // Añadir event listeners a todos los selects automáticos para que refresquen la vista
+        autoSelects.forEach(el => el.addEventListener('change', updatePreviewAndData));
+
+        // --- LECTURA DE ARCHIVO, DESCOMBINADO Y RELLENO ---
+        function handleFile(file) {
+            fileName = "Salida_" + file.name.split('.')[0] + ".xlsx";
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+
+                    // 1. DESCOMBINAR (Unmerge) celdas nativas de Excel
+                    if (worksheet['!merges']) {
+                        worksheet['!merges'].forEach(merge => {
+                            const startCell = worksheet[XLSX.utils.encode_cell(merge.s)];
+                            if (!startCell) return;
+                            for (let r = merge.s.r; r <= merge.e.r; r++) {
+                                for (let c = merge.s.c; c <= merge.e.c; c++) {
+                                    if (r === merge.s.r && c === merge.s.c) continue;
+                                    worksheet[XLSX.utils.encode_cell({r: r, c: c})] = { ...startCell };
+                                }
+                            }
+                        });
+                        delete worksheet['!merges']; // Eliminar para que json no lo lea como vacío
+                    }
+
+                    rawData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                    
+                    if (rawData.length === 0) return alert("El archivo está vacío.");
+                    headers = Object.keys(rawData[0]);
+
+                    // 2. RELLENAR HACIA ABAJO (Fill Down) celdas vacías
+                    if (rawData.length > 0) {
+                        let previousRow = { ...rawData[0] };
+                        for (let i = 1; i < rawData.length; i++) {
+                            headers.forEach(header => {
+                                let cellValue = rawData[i][header];
+                                // Si está vacío, hereda del anterior. Si no, actualiza la memoria del anterior.
+                                if (cellValue === undefined || cellValue === null || String(cellValue).trim() === "") {
+                                    rawData[i][header] = previousRow[header];
+                                } else {
+                                    previousRow[header] = cellValue;
+                                }
+                            });
+                        }
+                    }
+
+                    setupUI();
+                } catch (error) {
+                    alert("Error al procesar el Excel.");
+                    console.error(error);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- CONFIGURACIÓN UI POST-CARGA ---
+        function setupUI() {
+            document.getElementById('rowCount').innerText = `${rawData.length} registros cargados`;
+            fileInfo.classList.remove('hidden');
+
+            const findCol = (keywords) => headers.find(h => keywords.some(k => h.toUpperCase().trim() === k.toUpperCase().trim())) || "";
+
+            // Llenar selects Automáticos con auto-asignación exacta basada en las columnas solicitadas
+            populateSelect(sTag, headers, findCol(["TAG CABLE SWC", "TAG"]));
+            populateSelect(sTagName, headers, findCol(["TAGNAME", "TAG NAME"]));
+            populateSelect(sDesde, headers, findCol(["DESDE"]));
+            populateSelect(sBorn1, headers, findCol(["BORNERA 1"]));
+            populateSelect(sBo1, headers, findCol(["BORNE 1"]));
+            populateSelect(sHacia, headers, findCol(["HACIA"]));
+            populateSelect(sBorn2, headers, findCol(["BORNERA 2"]));
+            populateSelect(sBo2, headers, findCol(["BORNE 2"]));
+
+            processingSection.classList.remove('hidden');
+            
+            renderBuilders(); // Renderizar modo personalizado
+            updatePreviewAndData(); // Calcular datos iniciales
+            
+            dropzone.classList.add('bg-green-50', 'border-green-400');
+            dropzone.querySelector('p').innerText = "Archivo Excel listo.";
+        }
+
+        function populateSelect(selectEl, options, matchedValue) {
+            selectEl.innerHTML = '<option value="">-- Vacío / No usar --</option>';
+            options.forEach(opt => {
+                const el = document.createElement('option');
+                el.value = opt; el.textContent = opt;
+                if (opt === matchedValue) el.selected = true;
+                selectEl.appendChild(el);
+            });
+        }
+
+        // --- SISTEMA DE TABS ---
+        function switchMode(mode) {
+            currentMode = mode;
+            const btnAuto = document.getElementById('btnModeAuto');
+            const btnCustom = document.getElementById('btnModeCustom');
+            const tabAuto = document.getElementById('tabAuto');
+            const tabCustom = document.getElementById('tabCustom');
+            const lblMode = document.getElementById('lblCurrentMode');
+
+            if (mode === 'auto') {
+                btnAuto.className = "px-5 py-2 text-sm font-bold rounded-md bg-white shadow text-blue-700 transition-all";
+                btnCustom.className = "px-5 py-2 text-sm font-bold rounded-md text-gray-600 hover:text-gray-800 transition-all";
+                tabAuto.classList.remove('hidden-tab');
+                tabCustom.classList.add('hidden-tab');
+                lblMode.innerText = "Automático";
+            } else {
+                btnCustom.className = "px-5 py-2 text-sm font-bold rounded-md bg-white shadow text-blue-700 transition-all";
+                btnAuto.className = "px-5 py-2 text-sm font-bold rounded-md text-gray-600 hover:text-gray-800 transition-all";
+                tabCustom.classList.remove('hidden-tab');
+                tabAuto.classList.add('hidden-tab');
+                lblMode.innerText = "Personalizado";
+            }
+            updatePreviewAndData();
+        }
+
+        // --- MODO PERSONALIZADO: CONSTRUCTOR ---
+        function addBlock(templateType) {
+            templates[templateType].push({ id: Date.now(), column: "", inline: false });
+            renderBuilders(); updatePreviewAndData();
+        }
+
+        function removeBlock(templateType, id) {
+            templates[templateType] = templates[templateType].filter(b => b.id !== id);
+            renderBuilders(); updatePreviewAndData();
+        }
+
+        function updateBlock(templateType, id, key, value) {
+            const block = templates[templateType].find(b => b.id === id);
+            if (block) { block[key] = value; updatePreviewAndData(); }
+        }
+
+        function renderBuilders() {
+            renderBuilderColumn('t1', 'builder-t1');
+            renderBuilderColumn('t2', 'builder-t2');
+            setupDragAndDrop();
+        }
+
+        function renderBuilderColumn(type, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            let optionsHTML = '<option value="">-- Seleccionar Columna --</option>';
+            headers.forEach(h => optionsHTML += `<option value="${h}">${h}</option>`);
+
+            templates[type].forEach((block, index) => {
+                const div = document.createElement('div');
+                div.className = "bg-gray-50 border border-gray-200 rounded-lg p-2.5 flex items-start gap-2 sortable-block hover:border-gray-300";
+                div.draggable = true; div.dataset.id = block.id; div.dataset.type = type; div.dataset.index = index;
+
+                const selectOptions = optionsHTML.replace(`value="${block.column}"`, `value="${block.column}" selected`);
+
+                div.innerHTML = `
+                    <div class="text-gray-400 drag-handle hover:text-blue-500 cursor-grab px-1 mt-1.5">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    </div>
+                    <div class="flex flex-col flex-1">
+                        <select onchange="updateBlock('${type}', ${block.id}, 'column', this.value)"
+                            class="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 border bg-white cursor-pointer truncate">
+                            ${selectOptions}
+                        </select>
+                        <label class="flex items-center gap-1.5 text-[11px] text-gray-500 mt-1.5 ml-1 cursor-pointer w-fit hover:text-blue-600 transition-colors">
+                            <input type="checkbox" onchange="updateBlock('${type}', ${block.id}, 'inline', this.checked)" ${block.inline ? 'checked' : ''} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span>Concatenar en la misma línea (usar <strong>:</strong>)</span>
+                        </label>
+                    </div>
+                    <button onclick="removeBlock('${type}', ${block.id})" class="text-gray-400 hover:text-red-500 p-1.5 mt-0.5 rounded hover:bg-gray-200 transition-colors">
+                        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // --- DRAG AND DROP (Modo Personalizado) ---
+        let draggedItemInfo = null;
+        function setupDragAndDrop() {
+            const blocks = document.querySelectorAll('.sortable-block');
+            blocks.forEach(block => {
+                block.addEventListener('dragstart', function(e) {
+                    draggedItemInfo = { type: this.dataset.type, index: parseInt(this.dataset.index), id: parseInt(this.dataset.id) };
+                    setTimeout(() => this.classList.add('dragging'), 0);
+                });
+                block.addEventListener('dragend', function() {
+                    this.classList.remove('dragging');
+                    blocks.forEach(b => b.classList.remove('drag-over'));
+                });
+                block.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    if(draggedItemInfo && draggedItemInfo.type === this.dataset.type) this.classList.add('drag-over');
+                });
+                block.addEventListener('dragleave', function() { this.classList.remove('drag-over'); });
+                block.addEventListener('drop', function(e) {
+                    e.preventDefault(); this.classList.remove('drag-over');
+                    if (!draggedItemInfo) return;
+                    const targetType = this.dataset.type; const targetIndex = parseInt(this.dataset.index);
+                    if (targetType === draggedItemInfo.type && targetIndex !== draggedItemInfo.index) {
+                        const array = templates[targetType];
+                        const itemToMove = array.splice(draggedItemInfo.index, 1)[0];
+                        array.splice(targetIndex, 0, itemToMove);
+                        renderBuilders(); updatePreviewAndData();
+                    }
+                });
+            });
+        }
+
+        // --- PROCESAMIENTO CENTRAL DE DATOS ---
+        function updatePreviewAndData() {
+            processedData = [];
+            let previewHTML = '';
+            let previewCount = 0;
+
+            // Función auxiliar para Modo Auto: Toma múltiples columnas, elimina vacías y une con ":"
+            const concatColumns = (row, colNames) => {
+                return colNames
+                    .map(col => col && row[col] !== undefined && row[col] !== null ? String(row[col]).trim() : "")
+                    .filter(val => val !== "") // Solo guarda valores que tengan texto
+                    .join(":"); // Une con dos puntos
+            };
+
+            rawData.forEach((row, index) => {
+                const excelRowNumber = index + 2;
+                let marquilla1 = "";
+                let marquilla2 = "";
+
+                if (currentMode === 'auto') {
+                    // LÓGICA MODO AUTOMÁTICO EXACTA
+                    const tag = sTag.value ? String(row[sTag.value] || "").trim() : "";
+                    
+                    // Origen = TAGNAME : DESDE : BORNERA 1 : BORNE 1
+                    const strOrigen = concatColumns(row, [sTagName.value, sDesde.value, sBorn1.value, sBo1.value]);
+                    
+                    // Destino = HACIA : BORNERA 2 : BORNE 2
+                    const strDestino = concatColumns(row, [sHacia.value, sBorn2.value, sBo2.value]);
+
+                    // Si la fila no tiene ningún dato clave, la ignoramos
+                    if (!tag && !strOrigen && !strDestino) return;
+
+                    // Construimos M1 (Tag \n Origen \n Destino)
+                    marquilla1 = [tag, strOrigen, strDestino].filter(Boolean).join('\r\n');
+                    
+                    // Construimos M2 (Tag \n Destino \n Origen)
+                    marquilla2 = [tag, strDestino, strOrigen].filter(Boolean).join('\r\n');
+
+                } else {
+                    // LÓGICA MODO PERSONALIZADO
+                    const hasAnyData = [...templates.t1, ...templates.t2].some(block => block.column && row[block.column]);
+                    if (!hasAnyData) return;
+
+                    const buildCellString = (templateList) => {
+                        let result = "";
+                        // Filtramos solo los bloques que tienen columna y valor
+                        const activeBlocks = templateList.filter(b => b.column && row[b.column]);
+                        
+                        activeBlocks.forEach((block, idx) => {
+                            let val = String(row[block.column]).trim();
+                            if (idx === 0) {
+                                result += val;
+                            } else {
+                                // Si está marcado como inline, unimos con dos puntos en lugar de salto de línea
+                                if (block.inline) {
+                                    result += ":" + val;
+                                } else {
+                                    result += "\r\n" + val;
+                                }
+                            }
+                        });
+                        return result;
+                    };
+
+                    marquilla1 = buildCellString(templates.t1);
+                    marquilla2 = buildCellString(templates.t2);
+                }
+
+                // Guardar para exportación
+                if (marquilla1 || marquilla2) {
+                    processedData.push({
+                        "MARQUILLAS 1": marquilla1,
+                        "MARQUILLAS 2": marquilla2
+                    });
+
+                    // Renderizar las 5 primeras
+                    if (previewCount < 5) {
+                        const htmlM1 = marquilla1.replace(/\r\n/g, '<br>');
+                        const htmlM2 = marquilla2.replace(/\r\n/g, '<br>');
+                        
+                        previewHTML += `
+                            <tr class="hover:bg-blue-50 transition-colors">
+                                <td class="p-3 border-b border-gray-200 border-r text-center font-bold text-gray-500 bg-gray-50 text-xs">${excelRowNumber}</td>
+                                <td class="p-3 border-b border-gray-200 border-r align-top">
+                                    <div class="p-2 font-mono text-xs preview-cell text-gray-800 bg-white border border-gray-100 shadow-sm rounded">${htmlM1 || '-'}</div>
+                                </td>
+                                <td class="p-3 border-b border-gray-200 align-top">
+                                    <div class="p-2 font-mono text-xs preview-cell text-gray-800 bg-white border border-gray-100 shadow-sm rounded">${htmlM2 || '-'}</div>
+                                </td>
+                            </tr>
+                        `;
+                        previewCount++;
+                    }
+                }
+            });
+
+            if (previewCount === 0) {
+                previewHTML = `<tr><td colspan="3" class="p-8 text-center text-gray-500 text-sm">
+                    No hay datos calculados. Asegúrate de tener seleccionadas columnas correctas.
+                </td></tr>`;
+            }
+
+            previewTableBody.innerHTML = previewHTML;
+        }
+
+        // --- EXPORTACIÓN DE EXCEL CON ESTILOS ---
+        function downloadExcel() {
+            if (processedData.length === 0) return alert("No hay datos para exportar.");
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(processedData);
+
+            // Ajuste visual del ancho de las columnas
+            ws['!cols'] = [{wch: 45}, {wch: 45}];
+            
+            // --- INYECCIÓN DE ESTILOS (Ajustar Texto / Wrap Text) ---
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cellRef = XLSX.utils.encode_cell({r: R, c: C});
+                    if (!ws[cellRef]) continue;
+                    
+                    // Aplicar envolver texto (wrapText) y alineación superior a cada celda generada
+                    ws[cellRef].s = {
+                        alignment: {
+                            wrapText: true,
+                            vertical: "top"
+                        }
+                    };
+                    
+                    // Si es la fila de encabezado (Fila 0), la ponemos en negrita y fondo gris claro
+                    if (R === 0) {
+                        ws[cellRef].s.font = { bold: true, color: { rgb: "000000" } };
+                        ws[cellRef].s.fill = { fgColor: { rgb: "EFEFEF" } };
+                    }
+                }
+            }
+
+            XLSX.utils.book_append_sheet(wb, ws, "Marquillas");
+            XLSX.writeFile(wb, fileName);
+        }
+    </script>
+</body>
+</html>
